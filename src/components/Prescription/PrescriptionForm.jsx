@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
 import PrescriptionPDF from './PrescriptionPDF'
+import AutoComplete from '../UI/AutoComplete'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const FREQUENCIES = ['Once daily', 'Twice daily', 'Thrice daily', 'Four times daily', 'Every 6 hours', 'Every 8 hours', 'Every 12 hours', 'As needed']
@@ -43,6 +44,24 @@ export default function PrescriptionForm() {
     }
     fetchDoctor()
   }, [])
+
+  const fetchMedicines = async (query) => {
+    const { data } = await supabase
+      .from('medicines')
+      .select('*')
+      .ilike('name', `%${query}%`)
+      .limit(8)
+    return data || []
+  }
+
+  const fetchTests = async (query) => {
+    const { data } = await supabase
+      .from('tests')
+      .select('*')
+      .ilike('name', `%${query}%`)
+      .limit(8)
+    return data || []
+  }
 
   const handlePhoneLookup = async () => {
     if (phone.length < 10) return setError('Please enter a valid phone number.')
@@ -324,9 +343,14 @@ export default function PrescriptionForm() {
                     <div className="space-y-2">
                       <div>
                         <label className="block text-xs text-gray-400 mb-1">Medicine name</label>
-                        <input value={med.name} onChange={(e) => updateMedicine(i, 'name', e.target.value)}
-                          placeholder="e.g. Paracetamol 500mg"
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <AutoComplete
+                          value={med.name}
+                          onChange={(val) => updateMedicine(i, 'name', val)}
+                          onSelect={(option) => updateMedicine(i, 'name', option.name)}
+                          placeholder="Type to search medicine..."
+                          fetchOptions={fetchMedicines}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <div>
@@ -378,9 +402,14 @@ export default function PrescriptionForm() {
               <div className="space-y-2">
                 {rxData.tests.map((test, i) => (
                   <div key={i} className="flex gap-2">
-                    <input value={test.name} onChange={(e) => updateTest(i, e.target.value)}
-                      placeholder="e.g. CBC, LFT, Blood Sugar"
-                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <AutoComplete
+                      value={test.name}
+                      onChange={(val) => updateTest(i, val)}
+                      onSelect={(option) => updateTest(i, option.name)}
+                      placeholder="Type to search test..."
+                      fetchOptions={fetchTests}
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                     {rxData.tests.length > 1 && (
                       <button onClick={() => removeTest(i)}
                         className="text-gray-300 hover:text-red-400 text-sm transition px-2">✕</button>
