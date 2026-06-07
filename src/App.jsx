@@ -3,6 +3,7 @@ import Login from './components/Auth/Login'
 import Register from './components/Auth/Register'
 import Dashboard from './components/Dashboard/Dashboard'
 import PrescriptionForm from './components/Prescription/PrescriptionForm'
+import PrescriptionView from './components/Prescription/PrescriptionView'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabaseClient'
 
@@ -34,6 +35,7 @@ function App() {
         <Route path="/register" element={!session ? <Register /> : <Navigate to="/dashboard" />} />
         <Route path="/dashboard" element={session ? <Dashboard /> : <Navigate to="/login" />} />
         <Route path="/prescription/new" element={session ? <PrescriptionForm /> : <Navigate to="/login" />} />
+        <Route path="/prescription/view/:id" element={session ? <PrescriptionView /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to={session ? "/dashboard" : "/login"} />} />
       </Routes>
     </BrowserRouter>

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
-export default function PrescriptionPDF({ doctor, patient, rxData, onBack }) {
+export default function PrescriptionPDF({ doctor, patient, rxData, onBack, onEdit }) {
   const printRef = useRef()
 
   const handleDownloadPDF = async () => {
@@ -60,7 +60,7 @@ export default function PrescriptionPDF({ doctor, patient, rxData, onBack }) {
       <div className="max-w-2xl mx-auto px-4 py-8">
 
         {/* Action buttons */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-6 flex-wrap">
           <button onClick={onBack}
             className="text-sm text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5 transition">
             ← Back to dashboard
@@ -73,6 +73,12 @@ export default function PrescriptionPDF({ doctor, patient, rxData, onBack }) {
             className="text-sm text-white bg-green-600 hover:bg-green-700 rounded-lg px-4 py-1.5 transition">
             ⬇ Download PDF
           </button>
+          {onEdit && (
+            <button onClick={onEdit}
+              className="text-sm text-white bg-orange-500 hover:bg-orange-600 rounded-lg px-4 py-1.5 transition">
+              ✏ Edit & revisit
+              </button>
+            )}
         </div>
 
         {/* Prescription preview */}
