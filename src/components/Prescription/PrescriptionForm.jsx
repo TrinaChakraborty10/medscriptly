@@ -12,8 +12,10 @@ export default function PrescriptionForm() {
   const navigate = useNavigate()
   const [doctor, setDoctor] = useState(null)
   const [phone, setPhone] = useState('')
+  const [matchedPatients, setMatchedPatients] = useState([])
   const [patient, setPatient] = useState(null)
   const [isNewPatient, setIsNewPatient] = useState(false)
+  const [showNewPatientForm, setShowNewPatientForm] = useState(false)
   const [patientForm, setPatientForm] = useState({ full_name: '', age: '', gender: '', address: '' })
   const [lookupDone, setLookupDone] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -47,18 +49,29 @@ export default function PrescriptionForm() {
     setError('')
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
-    const { data } = await supabase.from('patients').select('*').eq('doctor_id', user.id).eq('phone', phone).single()
+    const { data } = await supabase
+      .from('patients')
+      .select('*')
+      .eq('doctor_id', user.id)
+      .eq('phone', phone)
     setLoading(false)
-    if (data) {
-      setPatient(data)
-      setPatientForm({ full_name: data.full_name, age: data.age, gender: data.gender, address: data.address })
+    if (data && data.length > 0) {
+      setMatchedPatients(data)
+      setPatient(data[0])
       setIsNewPatient(false)
+      setShowNewPatientForm(false)
     } else {
+      setMatchedPatients([])
       setPatient(null)
-      setPatientForm({ full_name: '', age: '', gender: '', address: '' })
       setIsNewPatient(true)
+      setShowNewPatientForm(true)
     }
     setLookupDone(true)
+  }
+
+  const handleSelectPatient = (p) => {
+    setPatient(p)
+    setShowNewPatientForm(false)
   }
 
   const handlePatientChange = (e) => setPatientForm({ ...patientForm, [e.target.name]: e.target.value })
@@ -69,7 +82,8 @@ export default function PrescriptionForm() {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     const { data, error: insertError } = await supabase.from('patients').insert({
-      doctor_id: user.id, phone,
+      doctor_id: user.id,
+      phone,
       full_name: patientForm.full_name,
       age: parseInt(patientForm.age),
       gender: patientForm.gender,
@@ -78,6 +92,8 @@ export default function PrescriptionForm() {
     setLoading(false)
     if (insertError) return setError(insertError.message)
     setPatient(data)
+    setMatchedPatients([...matchedPatients, data])
+    setShowNewPatientForm(false)
     setIsNewPatient(false)
   }
 
@@ -146,7 +162,7 @@ export default function PrescriptionForm() {
           <h2 className="text-sm font-medium text-gray-700 mb-3">Patient lookup</h2>
           <div className="flex gap-2">
             <input type="tel" value={phone}
-              onChange={(e) => { setPhone(e.target.value); setLookupDone(false); setPatient(null); setIsNewPatient(false) }}
+              onChange={(e) => { setPhone(e.target.value); setLookupDone(false); setPatient(null); setMatchedPatients([]); setIsNewPatient(false); setShowNewPatientForm(false) }}
               placeholder="Enter patient phone number" maxLength={10}
               className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <button onClick={handlePhoneLookup} disabled={loading}
@@ -157,24 +173,37 @@ export default function PrescriptionForm() {
           {error && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 mt-2">{error}</p>}
         </div>
 
-        {/* Existing patient */}
-        {lookupDone && !isNewPatient && patient && (
+        {/* Multiple patients found */}
+        {lookupDone && matchedPatients.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">Existing patient</span>
+            <h2 className="text-sm font-medium text-gray-700 mb-3">
+              {matchedPatients.length === 1 ? 'Patient found' : `${matchedPatients.length} patients found — select one`}
+            </h2>
+            <div className="space-y-2">
+              {matchedPatients.map((p) => (
+                <div key={p.id}
+                  onClick={() => handleSelectPatient(p)}
+                  className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition ${patient?.id === p.id ? 'border-blue-400 bg-blue-50' : 'border-gray-100 hover:border-blue-200 hover:bg-gray-50'}`}>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{p.full_name}</p>
+                    <p className="text-xs text-gray-400">{p.age} yrs · {p.gender}{p.address ? ` · ${p.address}` : ''}</p>
+                  </div>
+                  {patient?.id === p.id && (
+                    <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">Selected</span>
+                  )}
+                </div>
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><p className="text-gray-400 text-xs mb-0.5">Full name</p><p className="text-gray-900 font-medium">{patient.full_name}</p></div>
-              <div><p className="text-gray-400 text-xs mb-0.5">Age</p><p className="text-gray-900 font-medium">{patient.age} years</p></div>
-              <div><p className="text-gray-400 text-xs mb-0.5">Gender</p><p className="text-gray-900 font-medium">{patient.gender}</p></div>
-              <div><p className="text-gray-400 text-xs mb-0.5">Phone</p><p className="text-gray-900 font-medium">{phone}</p></div>
-              {patient.address && <div className="col-span-2"><p className="text-gray-400 text-xs mb-0.5">Address</p><p className="text-gray-900 font-medium">{patient.address}</p></div>}
-            </div>
+            <button
+              onClick={() => { setShowNewPatientForm(true); setPatient(null); setPatientForm({ full_name: '', age: '', gender: '', address: '' }) }}
+              className="mt-3 w-full text-xs text-blue-600 hover:text-blue-700 border border-blue-200 rounded-lg py-2 transition">
+              + Add new patient with this number
+            </button>
           </div>
         )}
 
         {/* New patient form */}
-        {lookupDone && isNewPatient && (
+        {(isNewPatient || showNewPatientForm) && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-4">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">New patient</span>
@@ -222,6 +251,11 @@ export default function PrescriptionForm() {
         {/* Prescription form */}
         {patient && (
           <>
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 mb-4 flex items-center justify-between">
+              <p className="text-sm text-blue-700">Writing prescription for <strong>{patient.full_name}</strong></p>
+              <button onClick={() => setPatient(null)} className="text-xs text-blue-400 hover:text-blue-600">Change</button>
+            </div>
+
             {/* Visit info */}
             <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-4">
               <h2 className="text-sm font-medium text-gray-700 mb-3">Visit details</h2>
@@ -285,9 +319,7 @@ export default function PrescriptionForm() {
                   <div key={i} className="border border-gray-100 rounded-xl p-3 relative">
                     {rxData.medicines.length > 1 && (
                       <button onClick={() => removeMedicine(i)}
-                        className="absolute top-2 right-2 text-gray-300 hover:text-red-400 text-xs transition">
-                        ✕
-                      </button>
+                        className="absolute top-2 right-2 text-gray-300 hover:text-red-400 text-xs transition">✕</button>
                     )}
                     <div className="space-y-2">
                       <div>
