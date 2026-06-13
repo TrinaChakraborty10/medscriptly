@@ -12,6 +12,7 @@ export default function AutoComplete({
   const [options, setOptions] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState(false)
   const dropdownRef = useRef()
 
   useEffect(() => {
@@ -29,6 +30,10 @@ export default function AutoComplete({
   }, [])
 
   useEffect(() => {
+    if (selected) {
+      setSelected(false)
+      return
+    }
     if (query.length < 1) {
       setOptions([])
       setShowDropdown(false)
@@ -51,6 +56,7 @@ export default function AutoComplete({
   }
 
   const handleSelect = (option) => {
+    setSelected(true)
     setQuery(option.name)
     onChange(option.name)
     onSelect(option)
@@ -84,23 +90,17 @@ export default function AutoComplete({
             <>
               {options.map((opt) => (
                 <div key={opt.id}
-                  onClick={() => handleSelect(opt)}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    handleSelect(opt)
+                  }}
                   className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0">
                   <p className="text-sm text-gray-900">{opt.name}</p>
-                  {opt.default_dosage && (
-                    <p className="text-xs text-gray-400">Default: {opt.default_dosage}</p>
-                  )}
                   {opt.category && (
                     <p className="text-xs text-gray-400">{opt.category}</p>
                   )}
                 </div>
               ))}
-              <div className="px-3 py-2 border-t border-gray-100 bg-gray-50">
-                <p className="text-xs text-blue-500 cursor-pointer hover:text-blue-700"
-                  onClick={() => { onChange(query); setShowDropdown(false) }}>
-                  + Use "{query}" if not listed
-                </p>
-              </div>
             </>
           )}
         </div>

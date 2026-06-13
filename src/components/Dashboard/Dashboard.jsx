@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom'
 
 export default function Dashboard() {
   const [doctor, setDoctor] = useState(null)
-  const [prescriptions, setPrescriptions] = useState([])
-  const [loadingRx, setLoadingRx] = useState(true)
+  const [patients, setPatients] = useState([])
+  const [filtered, setFiltered] = useState([])
+  const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -19,24 +21,29 @@ export default function Dashboard() {
         .single()
       setDoctor(doctorData)
 
-      const { data: rxData } = await supabase
-        .from('latest_prescriptions')
+      const { data: patientData } = await supabase
+        .from('doctor_patients')
         .select('*')
         .eq('doctor_id', user.id)
-        .order('created_at', { ascending: false })
-      setPrescriptions(rxData || [])
-      setLoadingRx(false)
+        .order('full_name', { ascending: true })
+      setPatients(patientData || [])
+      setFiltered(patientData || [])
+      setLoading(false)
     }
     fetchData()
   }, [])
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
+  const handleSearch = (e) => {
+    const q = e.target.value.toLowerCase()
+    setSearch(e.target.value)
+    setFiltered(patients.filter(p =>
+      p.full_name.toLowerCase().includes(q) ||
+      p.phone.includes(q)
+    ))
   }
 
-  const formatDate = (dateStr) => {
-    const d = new Date(dateStr)
-    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
   }
 
   return (
@@ -59,42 +66,51 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* New prescription button */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-          <button
-            onClick={() => navigate('/prescription/new')}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 text-sm font-medium transition flex items-center justify-center gap-2">
-            + New Prescription
-          </button>
-        </div>
+        {/* New Patient button */}
+        <button
+          onClick={() => navigate('/patient/new')}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 text-sm font-medium transition mb-6">
+          + New Patient
+        </button>
 
-        {/* Past prescriptions */}
+        {/* Patient list */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6">
-          <h2 className="text-sm font-medium text-gray-700 mb-4">Patients — latest prescription</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-medium text-gray-700">Your patients</h2>
+            <p className="text-xs text-gray-400">{patients.length} total</p>
+          </div>
 
-          {loadingRx ? (
+          {/* Search */}
+          <input
+            type="text"
+            value={search}
+            onChange={handleSearch}
+            placeholder="Search by name or phone number..."
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+          />
+
+          {loading ? (
             <p className="text-sm text-gray-400 text-center py-6">Loading...</p>
-          ) : prescriptions.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">No prescriptions yet.</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">
+              {search ? 'No patients found.' : 'No patients yet. Add your first patient!'}
+            </p>
           ) : (
             <div className="space-y-2">
-              {prescriptions.map((rx) => (
-                <div key={rx.id}
-                  onClick={() => navigate(`/prescription/view/${rx.id}`)}
+              {filtered.map((p) => (
+                <div key={p.id}
+                  onClick={() => navigate(`/patient/${p.id}/history`)}
                   className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-gray-50 cursor-pointer transition">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xs font-medium">
-                      {rx.patient_name?.charAt(0).toUpperCase()}
+                    <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-sm font-medium flex-shrink-0">
+                      {p.full_name?.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{rx.patient_name}</p>
-                      <p className="text-xs text-gray-400">{rx.diagnosis || 'No diagnosis recorded'}</p>
+                      <p className="text-sm font-medium text-gray-900">{p.full_name}</p>
+                      <p className="text-xs text-gray-400">{p.age} yrs · {p.gender} · {p.phone}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">{formatDate(rx.visit_date)}</p>
-                    <p className="text-xs text-gray-400">{rx.visit_time?.slice(0, 5)}</p>
-                  </div>
+                  <span className="text-xs text-gray-300">›</span>
                 </div>
               ))}
             </div>
