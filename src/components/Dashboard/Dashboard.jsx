@@ -73,6 +73,10 @@ export default function Dashboard() {
               <p className="text-sm font-medium text-gray-900">{doctor?.full_name}</p>
               <p className="text-xs text-gray-400">{doctor?.specialisation}</p>
             </div>
+            <button onClick={() => navigate('/profile')}
+              className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5 transition hover:bg-gray-50">
+              Profile
+            </button>
             <button onClick={handleLogout}
               className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5 transition hover:bg-gray-50">
               Sign out

@@ -189,6 +189,10 @@ export default function PrescriptionPDF({ doctor, patient, rxData, onBack, onEdi
           <div className="footer mt-10 pt-4 border-t border-gray-100 flex justify-between items-end">
             <p className="text-xs text-gray-400">This prescription is computer generated.</p>
             <div className="text-right">
+              {doctor?.signature_url && (
+                <img src={doctor.signature_url} alt="Doctor signature"
+                  className="max-h-16 max-w-32 object-contain ml-auto mb-1" />
+              )}
               <div className="w-32 border-t border-gray-400 mb-1 ml-auto"></div>
               <p className="text-xs text-gray-500">Doctor's signature</p>
             </div>

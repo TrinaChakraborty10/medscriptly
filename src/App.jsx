@@ -8,6 +8,8 @@ import PatientHistory from './components/Patient/PatientHistory'
 import AddPatient from './components/Patient/AddPatient'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabaseClient'
+import DoctorProfile from './components/Doctor/DoctorProfile'
+<Route path="/profile" element={session ? <DoctorProfile /> : <Navigate to="/login" />} />
 
 function App() {
   const [session, setSession] = useState(undefined)
