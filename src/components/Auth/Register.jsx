@@ -1,20 +1,19 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { useNavigate, Link } from 'react-router-dom'
-
-const SPECIALISATIONS = [
-  'General Physician', 'Cardiologist', 'Dermatologist',
-  'Gynaecologist', 'Neurologist', 'Orthopaedic Surgeon',
-  'Paediatrician', 'Psychiatrist', 'Pulmonologist', 'Urologist', 'Other'
-]
+import { SPECIALISATIONS } from '../../constants/prescription'
+import { sanitizeForm } from '../../utils/sanitize'
 
 export default function Register() {
   const navigate = useNavigate()
+  const fileInputRef = useRef()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [signatureFile, setSignatureFile] = useState(null)
+  const [signaturePreview, setSignaturePreview] = useState(null)
   const [form, setForm] = useState({
     full_name: '', email: '', password: '',
-    specialisation: '', clinic_name: '', registration_number: ''
+    specialisation: '', clinic_name: '', registration_number: '', phone: ''
   })
 
   const handleChange = (e) => {
@@ -22,16 +21,28 @@ export default function Register() {
     setError('')
   }
 
+  const handleSignatureSelect = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return setError('Please upload an image file.')
+    if (file.size > 2 * 1024 * 1024) return setError('Image must be under 2MB.')
+    setSignatureFile(file)
+    setSignaturePreview(URL.createObjectURL(file))
+    setError('')
+  }
+
   const handleRegister = async (e) => {
     e.preventDefault()
     const { full_name, email, password, specialisation, clinic_name, registration_number } = form
     if (!full_name || !email || !password || !specialisation || !clinic_name || !registration_number) {
-      return setError('All fields are required.')
+      return setError('All fields except phone and signature are required.')
     }
     if (password.length < 6) return setError('Password must be at least 6 characters.')
 
     setLoading(true)
     setError('')
+
+    const cleanForm = sanitizeForm(form)
 
     const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
     if (signUpError) { setLoading(false); return setError(signUpError.message) }
@@ -39,8 +50,26 @@ export default function Register() {
     const userId = data.user?.id
     if (!userId) { setLoading(false); return setError('Signup failed. Please try again.') }
 
+    let signatureUrl = null
+    if (signatureFile) {
+      const filePath = `${userId}/signature.${signatureFile.name.split('.').pop()}`
+      const { error: uploadError } = await supabase.storage
+        .from('signatures')
+        .upload(filePath, signatureFile, { upsert: true })
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage.from('signatures').getPublicUrl(filePath)
+        signatureUrl = publicUrl
+      }
+    }
+
     const { error: insertError } = await supabase.from('doctors').insert({
-      id: userId, full_name, specialisation, clinic_name, registration_number
+      id: userId,
+      full_name: cleanForm.full_name,
+      specialisation: cleanForm.specialisation,
+      clinic_name: cleanForm.clinic_name,
+      registration_number: cleanForm.registration_number,
+      phone: cleanForm.phone,
+      signature_url: signatureUrl
     })
     setLoading(false)
     if (insertError) return setError(insertError.message)
@@ -112,6 +141,13 @@ export default function Register() {
               </div>
 
               <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Phone number <span className="text-gray-300 font-normal">(optional)</span></label>
+                <input name="phone" type="tel" value={form.phone} onChange={handleChange}
+                  placeholder="Clinic contact number"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50" />
+              </div>
+
+              <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Specialisation</label>
                 <select name="specialisation" value={form.specialisation} onChange={handleChange}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50">
@@ -132,6 +168,23 @@ export default function Register() {
                 <input name="registration_number" value={form.registration_number} onChange={handleChange}
                   placeholder="MCI-12345"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Digital signature <span className="text-gray-300 font-normal">(optional, can add later)</span></label>
+                {signaturePreview ? (
+                  <div className="border border-gray-200 rounded-xl p-3 bg-gray-50 flex items-center justify-between">
+                    <img src={signaturePreview} alt="Signature preview" className="max-h-12 object-contain" />
+                    <button type="button" onClick={() => fileInputRef.current.click()}
+                      className="text-xs text-blue-600 font-medium">Change</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => fileInputRef.current.click()}
+                    className="w-full border-2 border-dashed border-gray-200 hover:border-blue-300 rounded-xl py-4 text-center transition">
+                    <p className="text-xs text-gray-400">✍️ Click to upload your signature</p>
+                  </button>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleSignatureSelect} className="hidden" />
               </div>
 
               {error && (

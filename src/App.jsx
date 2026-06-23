@@ -6,10 +6,9 @@ import PrescriptionForm from './components/Prescription/PrescriptionForm'
 import PrescriptionView from './components/Prescription/PrescriptionView'
 import PatientHistory from './components/Patient/PatientHistory'
 import AddPatient from './components/Patient/AddPatient'
+import DoctorProfile from './components/Doctor/DoctorProfile'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabaseClient'
-import DoctorProfile from './components/Doctor/DoctorProfile'
-<Route path="/profile" element={session ? <DoctorProfile /> : <Navigate to="/login" />} />
 
 function App() {
   const [session, setSession] = useState(undefined)
@@ -38,6 +37,7 @@ function App() {
         <Route path="/login" element={!session ? <Login /> : <Navigate to="/dashboard" />} />
         <Route path="/register" element={!session ? <Register /> : <Navigate to="/dashboard" />} />
         <Route path="/dashboard" element={session ? <Dashboard /> : <Navigate to="/login" />} />
+        <Route path="/profile" element={session ? <DoctorProfile /> : <Navigate to="/login" />} />
         <Route path="/patient/new" element={session ? <AddPatient /> : <Navigate to="/login" />} />
         <Route path="/patient/:patientId/history" element={session ? <PatientHistory /> : <Navigate to="/login" />} />
         <Route path="/patient/:patientId/prescription/new" element={session ? <PrescriptionForm /> : <Navigate to="/login" />} />

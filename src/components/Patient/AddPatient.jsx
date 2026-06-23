@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { useNavigate } from 'react-router-dom'
+import { sanitizeForm } from '../../utils/sanitize'
 
 export default function AddPatient() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const now = new Date().toISOString().split('T')[0]
   const [form, setForm] = useState({
-    full_name: '', phone: '', age: '', gender: '', address: ''
+    full_name: '', phone: '', age: '', gender: '', address: '', consultation_date: now
   })
 
   const handleChange = (e) => {
@@ -27,15 +29,17 @@ export default function AddPatient() {
 
     const { data: { user } } = await supabase.auth.getUser()
 
+    const cleanForm = sanitizeForm(form)
     const { data, error: insertError } = await supabase
       .from('patients')
       .insert({
         doctor_id: user.id,
-        full_name: form.full_name,
-        phone: form.phone,
-        age: parseInt(form.age),
-        gender: form.gender,
-        address: form.address
+        full_name: cleanForm.full_name,
+        phone: cleanForm.phone,
+        age: parseInt(cleanForm.age),
+        gender: cleanForm.gender,
+        address: cleanForm.address,
+        consultation_date: cleanForm.consultation_date
       })
       .select()
       .single()
@@ -110,6 +114,12 @@ export default function AddPatient() {
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Address <span className="text-gray-300 font-normal">(optional)</span></label>
               <input name="address" value={form.address} onChange={handleChange}
                 placeholder="Patient's address"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Consultation date</label>
+              <input name="consultation_date" type="date" value={form.consultation_date} onChange={handleChange}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50" />
             </div>
 

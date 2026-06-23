@@ -3,11 +3,8 @@ import { supabase } from '../../lib/supabaseClient'
 import { useNavigate, useParams } from 'react-router-dom'
 import PrescriptionPDF from './PrescriptionPDF'
 import AutoComplete from '../UI/AutoComplete'
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const FREQUENCIES = ['Once daily', 'Twice daily', 'Thrice daily', 'Four times daily', 'Every 6 hours', 'Every 8 hours', 'Every 12 hours', 'As needed']
-const DURATIONS = ['1 day', '2 days', '3 days', '5 days', '7 days', '10 days', '14 days', '1 month', 'Ongoing', 'As needed']
-const DOSAGES = ['1 tablet', '2 tablets', '1/2 tablet', '5ml', '10ml', '1 capsule', '2 capsules', '1 drop', '2 drops', 'As directed']
+import { DAYS, FREQUENCIES, DURATIONS, DOSAGES } from '../../constants/prescription'
+import { sanitizeText } from '../../utils/sanitize'
 
 export default function PrescriptionForm() {
   const navigate = useNavigate()
@@ -81,11 +78,18 @@ export default function PrescriptionForm() {
       patient_id: patient.id,
       visit_date: rxData.date,
       visit_time: rxData.time,
-      complaints: rxData.complaints,
-      diagnosis: rxData.diagnosis,
-      medicines: rxData.medicines.filter(m => m.name),
-      tests: rxData.tests.filter(t => t.name),
-      notes: rxData.notes
+      complaints: sanitizeText(rxData.complaints),
+      diagnosis: sanitizeText(rxData.diagnosis),
+      medicines: rxData.medicines.filter(m => m.name).map(m => ({
+        ...m,
+        name: sanitizeText(m.name),
+        instructions: sanitizeText(m.instructions)
+      })),
+      tests: rxData.tests.filter(t => t.name).map(t => ({
+        ...t,
+        name: sanitizeText(t.name)
+      })),
+      notes: sanitizeText(rxData.notes)
     })
     setSaving(false)
     if (saveError) return setError(saveError.message)

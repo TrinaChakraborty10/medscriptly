@@ -7,7 +7,7 @@ export default function PrescriptionPDF({ doctor, patient, rxData, onBack, onEdi
 
   const handleDownloadPDF = async () => {
     const element = printRef.current
-    const canvas = await html2canvas(element, { scale: 2 })
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true })
     const imgData = canvas.toDataURL('image/png')
     const pdf = new jsPDF('p', 'mm', 'a4')
     const pdfWidth = pdf.internal.pageSize.getWidth()
@@ -44,15 +44,42 @@ export default function PrescriptionPDF({ doctor, patient, rxData, onBack, onEdi
             .signature { text-align: right; }
             .signature-line { width: 130px; border-top: 1px solid #6b7280; margin-bottom: 4px; margin-left: auto; }
             .signature-label { font-size: 11px; color: #6b7280; }
+            .signature-img { max-height: 60px; max-width: 130px; object-fit: contain; margin-left: auto; display: block; margin-bottom: 4px; }
           </style>
         </head>
         <body>${printContents}</body>
       </html>
     `)
     win.document.close()
-    win.focus()
-    win.print()
-    win.close()
+    const images = win.document.images
+    let loadedCount = 0
+    const totalImages = images.length
+
+    const triggerPrint = () => {
+      win.focus()
+      win.print()
+      win.close()
+    }
+
+    if (totalImages === 0) {
+      setTimeout(triggerPrint, 200)
+    } else {
+      for (let img of images) {
+        if (img.complete) {
+          loadedCount++
+          if (loadedCount === totalImages) triggerPrint()
+        } else {
+          img.onload = () => {
+            loadedCount++
+            if (loadedCount === totalImages) triggerPrint()
+          }
+          img.onerror = () => {
+            loadedCount++
+            if (loadedCount === totalImages) triggerPrint()
+          }
+        }
+      }
+    }
   }
 
   const medicines = rxData.medicines.filter(m => m.name)
@@ -105,6 +132,7 @@ export default function PrescriptionPDF({ doctor, patient, rxData, onBack, onEdi
               <p className="doctor-sub text-xs text-gray-500 mt-1">{doctor?.specialisation}</p>
               <p className="doctor-sub text-xs text-gray-500">{doctor?.clinic_name}</p>
               <p className="doctor-sub text-xs text-gray-500">Reg. no.: {doctor?.registration_number}</p>
+              {doctor?.phone && <p className="doctor-sub text-xs text-gray-500">📞 {doctor.phone}</p>}
             </div>
             <div className="text-right">
               <p className="text-xs font-medium text-gray-700">{rxData.day}, {rxData.date}</p>
@@ -191,7 +219,7 @@ export default function PrescriptionPDF({ doctor, patient, rxData, onBack, onEdi
             <div className="text-right">
               {doctor?.signature_url && (
                 <img src={doctor.signature_url} alt="Doctor signature"
-                  className="max-h-16 max-w-32 object-contain ml-auto mb-1" />
+                  className="signature-img max-h-16 max-w-32 object-contain ml-auto mb-1" />
               )}
               <div className="w-32 border-t border-gray-400 mb-1 ml-auto"></div>
               <p className="text-xs text-gray-500">Doctor's signature</p>
